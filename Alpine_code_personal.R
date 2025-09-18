@@ -2,11 +2,11 @@
 #Prepared by Graeme Morey, UBC
 #Code written by Graeme Morey with the assistance of Microsoft Copilot AI
 #Date created September 15, 2025
-#Date updated September 17, 2025
+#Date updated September 18, 2025
 #Notes
   # denotes main heading
   ## denotes subheading 1
-  ### denotes subheading 2, etc
+  ### denotes subheading 2, etc (for the most part)
 
 #Libraries
 library(tidyverse)
@@ -18,6 +18,9 @@ library(tidyr)
 library(ggplot2)
 library(ggtext)
 library(ggh4x)
+library(purrr)
+library(ggforce)  # for facet_wrap2
+library(broom)
 
 #Setwd
 setwd("/Users/Graeme/Downloads/Dropbox/Graeme/UBC/classes/Year 4/CONS 451/Modules/Alpine/Assignments/A2/R_work")
@@ -322,13 +325,10 @@ lm_abies <- lm(Height ~ plot_distance, data = height_long_filter[height_long_fil
 summary(lm_abies)
 
 ###create table
-library(dplyr)
-library(purrr)
-library(broom)
+
 
 # Create the summary table
-library(dplyr)
-library(purrr)
+
 
 lm_summary_table <- height_long_filter %>%
   group_by(Species) %>%
@@ -548,10 +548,7 @@ ggsave(
 )
 
 ##Community richness by distance
-library(ggplot2)
-library(tidyr)
-library(dplyr)
-library(ggforce)  # for facet_wrap2
+
 
 # Reshape and rename vegetation types
 community_richness_long <- community_richness %>%
@@ -610,8 +607,7 @@ ggsave(
 
 ##linear regression for the community richness
 
-library(dplyr)
-library(purrr)
+
 
 lm_community_richness <- community_richness_long %>%
   group_by(Vegetation_Type) %>%
