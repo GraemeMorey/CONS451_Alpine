@@ -2,7 +2,7 @@
 #Prepared by Graeme Morey, UBC
 #Code written by Graeme Morey with the assistance of Microsoft Copilot AI
 #Date created September 15, 2025
-#Date updated September 18, 2025
+#Date updated September 19, 2025
 #Notes
   # denotes main heading
   ## denotes subheading 1
@@ -19,7 +19,7 @@ library(ggplot2)
 library(ggtext)
 library(ggh4x)
 library(purrr)
-library(ggforce)  # for facet_wrap2
+library(ggforce)  
 library(broom)
 
 #Setwd
@@ -334,6 +334,7 @@ lm_summary_table <- height_long_filter %>%
   group_by(Species) %>%
   group_split() %>%
   map_df(function(df) {
+    sample_size <- nrow(df)
     species_name <- unique(df$Species)
     model <- lm(Height ~ plot_distance, data = df)
     summary_model <- summary(model)
@@ -348,6 +349,7 @@ lm_summary_table <- height_long_filter %>%
     
     # Combine into a multi-line string
     stats_string <- paste0(
+      "Sample Size = ", sample_size, "\n",
       "Slope = ", slope, "\n",
       "Std. Error = ", std_error, "\n",
       "p-value = ", p_value, "\n",
@@ -552,26 +554,26 @@ ggsave(
 
 # Reshape and rename vegetation types
 community_richness_long <- community_richness %>%
-  pivot_longer(cols = c(Lichen_Moss, Shrub, Forbe, Grass_Rush, Tree),
+  pivot_longer(cols = c(Lichen_Moss, Shrub, Forb, Graminoid, Tree),
                names_to = "Vegetation_Type",
                values_to = "Species_Richness") %>%
   mutate(Vegetation_Type = recode(Vegetation_Type,
                                   Lichen_Moss = "Lichen and Moss",
                                   Shrub = "Shrub",
-                                  Forbe = "Forbe",
-                                  Grass_Rush = "Grass and Rush",
+                                  Forbe = "Forb",
+                                  Grass_Rush = "Graminoid",
                                   Tree = "Tree"
   ),
   Vegetation_Type = factor(Vegetation_Type,
-                           levels = c("Lichen and Moss", "Shrub", "Forbe", "Grass and Rush", "Tree"))
+                           levels = c("Lichen and Moss", "Shrub", "Forb", "Graminoid", "Tree"))
   )
 
 # Define custom strip backgrounds
 strip_backgrounds <- list(
   "Lichen and Moss" = element_rect(fill = "lightblue", color = NA),
   "Shrub" = element_rect(fill = "tan1", color = NA),
-  "Forbe" = element_rect(fill = "orchid1", color = NA),
-  "Grass and Rush" = element_rect(fill = "tan", color = NA),
+  "Forb" = element_rect(fill = "orchid1", color = NA),
+  "Graminoid" = element_rect(fill = "tan", color = NA),
   "Tree" = element_rect(fill = "palegreen", color = NA)
 )
 
@@ -614,6 +616,7 @@ lm_community_richness <- community_richness_long %>%
   group_split() %>%
   map_df(function(df) {
     vegetation_name <- unique(df$Vegetation_Type)
+    sample_size <- nrow(df)
     model <- lm(Species_Richness ~ plot_distance, data = df)
     summary_model <- summary(model)
     
@@ -624,21 +627,82 @@ lm_community_richness <- community_richness_long %>%
     t_value <- round(summary_model$coefficients["plot_distance", "t value"], 2)
     r_squared <- round(summary_model$r.squared, 3)
     f_stat <- round(summary_model$fstatistic[1], 2)
+    df_residual <- summary_model$df[2]
+    
     
     # Combine into a multi-line string
     stats_string <- paste0(
+      "Sample Size = ", sample_size, "\n",
       "Slope = ", slope, "\n",
       "Std. Error = ", std_error, "\n",
       "p-value = ", p_value, "\n",
       "t-value = ", t_value, "\n",
       "R² = ", r_squared, "\n",
-      "F-statistic = ", f_stat
+      "F-statistic = ", f_stat,
+      "Residual DF = ", df_residual,
+      "Residual DF = ", df_residual
     )
     
     tibble(Vegetation_Type = vegetation_name, Statistics = stats_string)
   })
 write.csv(lm_community_richness, "lm_community_richness.csv", row.names = FALSE)
 
+#Trees
+tree <- read.csv("tree_data.csv")
+# Step 1: Create distance bins
+tree <- tree %>%
+  mutate(distance_group = case_when(
+    distance >= 20 & distance < 25 ~ "20–25m",
+    distance >= 25 & distance < 30 ~ "25–30m",
+    distance >= 35 & distance < 40 ~ "35–40m",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(distance_group))  # Remove rows outside the bins
 
+# Step 2: Calculate relative percentages of each class within each bin
+plot_data <- tree %>%
+  group_by(distance_group, class) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(distance_group) %>%
+  mutate(percent = count / sum(count) * 100)
+plot_data$class <- as.factor(plot_data$class)
+
+
+# Step 3: Create grouped bar plot
+# Make sure 'class' is a factor
+plot_data$class <- as.factor(plot_data$class)
+
+# Define your custom colors
+custom_colors <- c("1" = "olivedrab1", 
+                   "2" = "yellowgreen",  
+                   "3" = "chartreuse4")  
+
+tree_graph <- ggplot(plot_data, aes(x = distance_group, y = percent, fill = class)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
+  labs(
+    x = "Distance from trail (m)",
+    y = "Percent of stand composition per distance range (%)",
+    fill = "Tree Class"
+  ) +
+  theme_minimal(base_family = "sans") +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black")
+  ) +
+  scale_fill_manual(values = custom_colors) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100))
+
+
+
+tree_graph
+
+ggsave(
+  "figure_tree.jpg",
+  tree_graph,
+  width = 15,
+  height = 10,
+  units = "cm"
+)
 
 
